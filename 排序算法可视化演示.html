@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>排序算法可视化演示</title>
+    <style>
+        :root {
+            --card-width: 44px;
+            --card-gap: 8px;
+            --color-default: #3b82f6;
+            --color-compare: #f59e0b;
+            --color-swap: #ef4444;
+            --color-sorted: #22c55e;
+            --color-pivot: #8b5cf6;
+            --color-gold: #fbbf24;
+            --color-insert: #ec4899;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+            background: #f3f4f6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 1100px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            padding: 30px 30px 25px;
+            margin: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 18px;
+            font-size: 1.8em;
+        }
+
+        .algo-selector {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .algo-selector label {
+            font-weight: 600;
+            color: #374151;
+        }
+        .algo-selector select {
+            padding: 8px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .algo-controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .algo-controls input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 14px;
+            width: 220px;
+            outline: none;
+        }
+
+        .algo-controls button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            background: #2563eb;
+            color: #fff;
+            font-weight: 500;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .algo-controls button:hover {
+            background: #1d4ed8;
+        }
+        .algo-controls button:active {
+            transform: translateY(1px);
+        }
+        .algo-controls button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .algo-controls .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        .algo-controls .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .viz-container {
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: 320px;
+            margin: 0 auto 16px;
+            padding: 20px 14px 30px;
+            background: #f9fafb;
+            border-radius: 16px;
+            border: 1px solid #e5e7eb;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .card-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            flex-shrink: 0;
+            width: var(--card-width);
+            margin-right: var(--card-gap);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 1;
+        }
+
+        .card {
+            width: var(--card-width);
+            border-radius: 8px;
+            background: linear-gradient(180deg, #60a5fa 0%, var(--color-default) 100%);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+        }
+
+        .card .val {
+            font-size: 15px;
+            line-height: 1;
+        }
+
+        .card-index-overlay {
+            position: absolute;
+            bottom: 10px;
+            width: var(--card-width);
+            text-align: center;
+            font-size: 11px;
+            color: #9ca3af;
+            font-weight: 500;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* 全局基础状态 */
+        .card-wrapper.comparing .card {
+            background: linear-gradient(180deg, #fbbf24 0%, var(--color-compare) 100%);
+            box-shadow: 0 0 22px rgba(245, 158, 11, 0.85);
+            transform: translateY(-10px) scale(1.12);
+            z-index: 100;
+        }
+        .card-wrapper.swapping .card {
+            background: linear-gradient(180deg, #f87171 0%, var(--color-swap) 100%);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+        }
+        .card-wrapper.sorted .card {
+            background: linear-gradient(180deg, #86efac 0%, var(--color-sorted) 100%);
+            opacity: 0.75;
+            border: 1px solid #22c55e;
+        }
+
+        .card-wrapper.focused .card {
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.95);
+            z-index: 120;
+        }
+
+        /* 特殊元素全局样式 */
+        .range-box {
+            position: absolute;
+            bottom: 35px;
+            height: calc(100% - 45px);
+            background: rgba(139, 92, 246, 0.12);
+            border: 2px dashed rgba(139, 92, 246, 0.5);
+            border-radius: 12px;
+            transition: left 0.4s ease, width 0.4s ease;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .vs-badge-overlay {
+            position: absolute;
+            top: 4px;
+            left: 0;
+            transform: translateX(-50%);
+            background: #c2410c;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 12px;
+            border: none;
+            pointer-events: none;
+            z-index: 200;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .slot-placeholder-overlay {
+            position: absolute;
+            bottom: 14px;
+            width: var(--card-width);
+            height: calc(100% - 24px);
+            border: 3px dashed #9ca3af;
+            border-radius: 10px;
+            opacity: 0.7;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .crown {
+            position: absolute;
+            top: 2px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            font-size: 10px;
+            font-weight: 700;
+            color: #b45309;
+            background: #fffbeb;
+            border: 1px solid #f59e0b;
+            border-radius: 4px;
+            padding: 2px 4px;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            z-index: 50;
+        }
+        .card-wrapper.has-crown .crown {
+            transform: translateX(-50%) scale(1);
+            opacity: 1;
+        }
+
+        .card-badges {
+            position: absolute;
+            top: 2px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 2px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .card-badges span {
+            display: none;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 4px;
+            border-radius: 4px;
+            line-height: 1;
+        }
+        .badge-i {
+            background: rgba(59, 130, 246, 0.9);
+            color: #fff;
+        }
+        .badge-j {
+            background: rgba(249, 115, 22, 0.9);
+            color: #fff;
+        }
+        .show-badge-i .badge-i,
+        .show-badge-j .badge-j {
+            display: inline-block;
+        }
+
+        /* 信息面板 */
+        .info-panel {
+            max-width: 800px;
+            margin: 0 auto 12px;
+            padding: 10px 16px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            text-align: center;
+            min-height: 50px;
+        }
+        .step-desc {
+            font-size: 16px;
+            color: #111827;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .step-counter {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .legend-dot {
+            width: 13px;
+            height: 13px;
+            border-radius: 4px;
+        }
+
+        .playback {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        .playback button {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .playback button:hover {
+            background: #1d4ed8;
+        }
+        .playback button:active {
+            transform: translateY(1px);
+        }
+        .playback button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* 算法特定动画（覆盖全局状态） */
+        .bubble-viz .card-wrapper.comparing .card {
+            animation: compare-pop 0.4s ease-out forwards;
+        }
+        .bubble-viz .card-wrapper.anim-swap-cross .card {
+            animation: swap-cross 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        .bubble-viz .card-wrapper.sorted-bubble .card {
+            background: linear-gradient(180deg, #86efac 0%, var(--color-sorted) 100%);
+            opacity: 0.7;
+        }
+
+        .selection-viz .card-wrapper.min-current .card {
+            background: linear-gradient(180deg, #fde047 0%, var(--color-gold) 100%);
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.9);
+        }
+        .selection-viz .card-wrapper.comparing .card {
+            transform: translateY(-12px) scale(1.1);
+        }
+        .selection-viz .card-wrapper.sorted-selection .card {
+            background: linear-gradient(180deg, #fde047 0%, #d97706 100%);
+            border: 2px solid var(--color-gold);
+        }
+
+        .insertion-viz .card-wrapper.key-picked .card {
+            transform: translateY(-38px);
+            background: linear-gradient(180deg, #f472b6 0%, var(--color-insert) 100%);
+            box-shadow: 0 14px 28px rgba(236, 72, 153, 0.4);
+        }
+        .insertion-viz .card-wrapper.shift-right .card {
+            background: linear-gradient(180deg, #fbbf24 0%, var(--color-compare) 100%);
+        }
+        .insertion-viz .card-wrapper.anim-drop .card {
+            animation: drop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .insertion-viz .card-wrapper.sorted-insertion .card {
+            border-bottom: 4px solid #16a34a;
+        }
+
+        .quick-viz .card-wrapper.pivot .card {
+            background: linear-gradient(180deg, #a78bfa 0%, var(--color-pivot) 100%);
+        }
+        .quick-viz .card-wrapper.pivot .card::after {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 12px;
+            border: 3px solid var(--color-pivot);
+            animation: pulse-ring 1.2s ease-out infinite;
+            pointer-events: none;
+        }
+        .quick-viz .card-wrapper.sorted-quick .card {
+            background: linear-gradient(180deg, #4ade80 0%, var(--color-sorted) 100%);
+        }
+        .quick-viz .card-wrapper.anim-pivot-place .card {
+            animation: pivot-place 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* 新算法：归并与堆 */
+        .merge-viz .card-wrapper.merge-put .card {
+            animation: merge-put 0.45s ease-out;
+        }
+        .heap-viz .card-wrapper.heapify .card {
+            animation: heapify-pop 0.3s ease-out;
+        }
+
+        /* 关键帧动画 */
+        @keyframes compare-pop {
+            0% {
+                transform: translateY(0) scale(1);
+            }
+            60% {
+                transform: translateY(-20px) scale(1.3);
+            }
+            100% {
+                transform: translateY(-16px) scale(1.25);
+            }
+        }
+        @keyframes swap-cross {
+            0% {
+                transform: rotateY(0deg) scale(1) translateX(0);
+            }
+            50% {
+                transform: rotateY(90deg) scale(1.15) translateX(var(--swap-dir, 15px));
+            }
+            100% {
+                transform: rotateY(180deg) scale(1) translateX(0);
+            }
+        }
+        @keyframes drop-in {
+            0% {
+                transform: translateY(-35px);
+            }
+            60% {
+                transform: translateY(6px);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1.4);
+                opacity: 0;
+            }
+        }
+        @keyframes pivot-place {
+            0% {
+                transform: scale(1);
+            }
+            40% {
+                transform: scale(1.35);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        @keyframes merge-put {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 8px var(--color-insert);
+            }
+            50% {
+                transform: scale(1.25);
+                box-shadow: 0 0 22px var(--color-insert);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        @keyframes heapify-pop {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --card-width: 34px;
+                --card-gap: 6px;
+            }
+            .viz-container {
+                height: 240px;
+            }
+            #app {
+                padding: 20px 15px;
+                margin: 10px;
+            }
+            h1 {
+                font-size: 1.4em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>📊 排序算法可视化演示</h1>
+
+        <div class="algo-selector">
+            <label for="algo-select">🔽 选择算法：</label>
+            <select id="algo-select"></select>
+        </div>
+
+        <div class="algo-controls">
+            <input type="text" id="array-input" placeholder="输入数字，如：5,3,8,1,2" value="5,3,8,1,2">
+            <button id="btn-generate">✨ 生成数组</button>
+            <button id="btn-reset" class="btn-secondary">🔄 重置</button>
+        </div>
+
+        <div class="legend" id="legend"></div>
+
+        <div id="viz-container" class="viz-container"></div>
+
+        <div class="info-panel">
+            <div class="step-desc" id="desc"></div>
+            <div class="step-counter" id="counter">- / -</div>
+        </div>
+
+        <div class="playback">
+            <button id="btn-prev">⏮ 上一步</button>
+            <button id="btn-play">▶ 自动播放</button>
+            <button id="btn-next">下一步 ⏭</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ---------- 辅助函数 ----------
+            function parseInput(str) {
+                return str.split(/[,，\s]+/)
+                    .map(s => s.trim())
+                    .filter(s => s !== '')
+                    .map(Number)
+                    .filter(n => !isNaN(n) && n >= 0);
+            }
+
+            function clampArray(arr, maxLen = 20) {
+                return arr.slice(0, maxLen);
+            }
+
+            function createSnapshot(array, description, focus = [], animation = '', extras = {}) {
+                return {
+                    array: array.map(item => ({ ...item })),
+                    desc: description,
+                    focus,
+                    animation,
+                    extras
+                };
+            }
+
+            // ---------- 步骤生成器 ----------
+            function generateBubbleSteps(arr) {
+                const steps = [];
+                const n = arr.length;
+                const array = arr.map((v, i) => ({ value: v, state: 'default', id: i }));
+                steps.push(createSnapshot(array, `初始数组: [${arr.join(', ')}]`));
+                if (n <= 1) {
+                    array.forEach(x => x.state = 'sorted-bubble');
+                    steps.push(createSnapshot(array, `排序完成！`));
+                    return steps;
+                }
+                for (let i = 0; i < n - 1; i++) {
+                    for (let j = 0; j < n - i - 1; j++) {
+                        steps.push(createSnapshot(array,
+                            `比较 arr[${j}]=${array[j].value} 和 arr[${j + 1}]=${array[j + 1].value}`,
+                            [j, j + 1], 'compare', { sortedEnd: n - i }));
+                        if (array[j].value > array[j + 1].value) {
+                            steps.push(createSnapshot(array,
+                                `交换 arr[${j}] 和 arr[${j + 1}]`,
+                                [j, j + 1], 'swap', { sortedEnd: n - i }));
+                            [array[j], array[j + 1]] = [array[j + 1], array[j]];
+                            steps.push(createSnapshot(array, `交换完成`, [j, j + 1], '', { sortedEnd: n - i }));
+                        }
+                        array[j].state = 'default';
+                        array[j + 1].state = 'default';
+                    }
+                    array[n - i - 1].state = 'sorted-bubble';
+                    steps.push(createSnapshot(array, `arr[${n - i - 1}] 已归位`, [n - i - 1], '', { sortedEnd: n - i }));
+                }
+                array.forEach(x => x.state = 'sorted-bubble');
+                steps.push(createSnapshot(array, `排序完成！`));
+                return steps;
+            }
+
+            function generateSelectionSteps(arr) {
+                const steps = [];
+                const n = arr.length;
+                const array = arr.map((v, i) => ({ value: v, state: 'default', id: i }));
+                steps.push(createSnapshot(array, `初始数组: [${arr.join(', ')}]`));
+                for (let i = 0; i < n; i++) {
+                    array.forEach((x, idx) => { if (idx < i) x.state = 'sorted-selection'; });
+                    let minIdx = i;
+                    array[minIdx].state = 'min-current';
+                    steps.push(createSnapshot(array, `第 ${i+1} 轮，当前最小值 arr[${i}]=${array[i].value}`, [minIdx], '', { minIdx,
+                        sortedStart: i }));
+                    for (let j = i + 1; j < n; j++) {
+                        steps.push(createSnapshot(array, `比较 arr[${minIdx}]=${array[minIdx].value} 和 arr[${j}]=${array[j].value}`,
+                            [minIdx, j], 'compare', { minIdx, sortedStart: i }));
+                        if (array[j].value < array[minIdx].value) {
+                            array[minIdx].state = 'default';
+                            minIdx = j;
+                            array[minIdx].state = 'min-current';
+                            steps.push(createSnapshot(array, `发现更小值 arr[${j}]=${array[j].value}`, [minIdx], 'crown-transfer', {
+                                oldMinIdx: i,
+                                newMinIdx: j,
+                                sortedStart: i }));
+                        }
+                    }
+                    if (minIdx !== i) {
+                        steps.push(createSnapshot(array, `交换 arr[${i}] 和 arr[${minIdx}]`, [i, minIdx], 'swap', { minIdx,
+                            sortedStart: i }));
+                        [array[i], array[minIdx]] = [array[minIdx], array[i]];
+                        steps.push(createSnapshot(array, `交换完成`, [i], 'arc-fly', { sortedStart: i + 1 }));
+                    }
+                    array[i].state = 'sorted-selection';
+                    steps.push(createSnapshot(array, `arr[${i}] 已归位`, [i], '', { sortedStart: i + 1 }));
+                }
+                steps.push(createSnapshot(array, `排序完成！`));
+                return steps;
+            }
+
+            function generateInsertionSteps(arr) {
+                const steps = [];
+                const n = arr.length;
+                const array = arr.map((v, i) => ({ value: v, state: 'default', id: i }));
+                steps.push(createSnapshot(array, `初始数组: [${arr.join(', ')}]`));
+                if (n === 0) { steps.push(createSnapshot(array, `排序完成！`)); return steps; }
+                array[0].state = 'sorted-insertion';
+                steps.push(createSnapshot(array, `arr[0] 视为已排序`, [], '', { sortedEnd: 1 }));
+                for (let i = 1; i < n; i++) {
+                    let keyVal = array[i].value;
+                    let keyId = array[i].id;
+                    array[i] = { value: keyVal, state: 'key-picked', id: keyId };
+                    steps.push(createSnapshot(array, `取出 key = ${keyVal}`, [i], '', { keyIndex: i, sortedEnd: i }));
+                    let j = i - 1;
+                    while (j >= 0) {
+                        steps.push(createSnapshot(array, `比较 key=${keyVal} 和 arr[${j}]=${array[j].value}`, [j, j + 1], 'compare', {
+                            keyIndex: j + 1,
+                            sortedEnd: i }));
+                        if (array[j].value > keyVal) {
+                            array[j + 1] = array[j];
+                            array[j] = { value: keyVal, state: 'key-picked', id: keyId };
+                            steps.push(createSnapshot(array, `arr[${j}] 后移`, [j, j + 1], 'shift', { keyIndex: j,
+                                slotIndex: j + 1, sortedEnd: i }));
+                            j--;
+                        } else break;
+                    }
+                    array[j + 1] = { value: keyVal, state: 'key-picked', id: keyId };
+                    steps.push(createSnapshot(array, `插入 key 到 arr[${j+1}]`, [j + 1], 'drop', { keyIndex: j + 1,
+                        sortedEnd: i + 1 }));
+                    for (let k = 0; k <= i; k++) array[k].state = 'sorted-insertion';
+                    steps.push(createSnapshot(array, `已排序区扩大`, [], '', { sortedEnd: i + 1 }));
+                }
+                steps.push(createSnapshot(array, `排序完成！`));
+                return steps;
+            }
+
+            function generateQuickSteps(arr) {
+                const steps = [];
+                const array = arr.map((v, i) => ({ value: v, state: 'default', id: i }));
+                steps.push(createSnapshot(array, `初始数组: [${arr.join(', ')}]`));
+                if (arr.length <= 1) {
+                    array.forEach(x => x.state = 'sorted-quick');
+                    steps.push(createSnapshot(array, `排序完成！`));
+                    return steps;
+                }
+
+                function partition(low, high) {
+                    let pivotValue = array[high].value;
+                    array[high].state = 'pivot';
+                    steps.push(createSnapshot(array, `基准 pivot = arr[${high}] = ${pivotValue}，区间 [${low}, ${high}]`, [high], '',
+                        { range: [low, high] }));
+                    let i = low,
+                        j = high - 1;
+                    while (i <= j) {
+                        while (i <= j && array[i].value <= pivotValue) i++;
+                        while (i <= j && array[j].value > pivotValue) j--;
+                        if (i < j) {
+                            steps.push(createSnapshot(array, `交换 arr[${i}] 和 arr[${j}]`, [i, j], 'swap', { range: [low,
+                            high] }));
+                            [array[i], array[j]] = [array[j], array[i]];
+                        }
+                    }
+                    if (i !== high) {
+                        steps.push(createSnapshot(array, `将基准交换到 arr[${i}]`, [i, high], 'swap', { range: [low, high] }));
+                        [array[i], array[high]] = [array[high], array[i]];
+                    }
+                    array[i].state = 'sorted-quick';
+                    steps.push(createSnapshot(array, `基准 arr[${i}] 已归位`, [i], 'pivot-place', { range: [low, high],
+                    pivotPos: i }));
+                    return i;
+                }
+
+                function quickSort(low, high) {
+                    if (low < high) {
+                        let p = partition(low, high);
+                        quickSort(low, p - 1);
+                        quickSort(p + 1, high);
+                    } else if (low === high) {
+                        array[low].state = 'sorted-quick';
+                        steps.push(createSnapshot(array, `单元素区间 [${low}] 已有序`, [low], '', { range: [low, high] }));
+                    }
+                }
+                quickSort(0, array.length - 1);
+                steps.push(createSnapshot(array, `排序完成！`));
+                return steps;
+            }
+
+            function generateMergeSteps(arr) {
+                const steps = [];
+                const array = arr.map((v, i) => ({ value: v, state: 'default', id: i }));
+                steps.push(createSnapshot(array, `初始数组: [${arr.join(', ')}]`));
+                if (arr.length <= 1) {
+                    array.forEach(x => x.state = 'sorted');
+                    steps.push(createSnapshot(array, `排序完成！`));
+                    return steps;
+                }
+
+                function mergeSort(l, r) {
+                    if (l >= r) {
+                        array[l].state = 'sorted';
+                        steps.push(createSnapshot(array, `单元素区间 [${l}] 已有序`, [l], '', { range: [l, r] }));
+                        return;
+                    }
+                    const m = Math.floor((l + r) / 2);
+                    steps.push(createSnapshot(array, `分解 [${l}, ${r}] → [${l}, ${m}] 和 [${m+1}, ${r}]`, [], '', { range: [l,
+                    r] }));
+                    mergeSort(l, m);
+                    mergeSort(m + 1, r);
+                    merge(l, m, r);
+                }
+
+                function merge(l, m, r) {
+                    steps.push(createSnapshot(array, `合并 [${l}, ${m}] 与 [${m+1}, ${r}]`, [], '', { range: [l, r] }));
+                    let left = array.slice(l, m + 1);
+                    let right = array.slice(m + 1, r + 1);
+                    let i = 0,
+                        j = 0,
+                        k = l;
+                    while (i < left.length && j < right.length) {
+                        steps.push(createSnapshot(array, `比较 ${left[i].value} 和 ${right[j].value}`, [l + i, m + 1 + j],
+                            'compare', { range: [l, r] }));
+                        if (left[i].value <= right[j].value) {
+                            array[k] = { ...left[i], id: array[k].id };
+                            steps.push(createSnapshot(array, `放置 ${left[i].value} → arr[${k}]`, [k], 'merge-put', { range: [l,
+                            r] }));
+                            i++;
+                        } else {
+                            array[k] = { ...right[j], id: array[k].id };
+                            steps.push(createSnapshot(array, `放置 ${right[j].value} → arr[${k}]`, [k], 'merge-put', { range: [l,
+                            r] }));
+                            j++;
+                        }
+                        array[k].state = 'sorted';
+                        k++;
+                    }
+                    while (i < left.length) {
+                        array[k] = { ...left[i], id: array[k].id };
+                        steps.push(createSnapshot(array, `剩余 ${left[i].value} → arr[${k}]`, [k], 'merge-put', { range: [l,
+                    r] }));
+                        array[k].state = 'sorted';
+                        i++;
+                        k++;
+                    }
+                    while (j < right.length) {
+                        array[k] = { ...right[j], id: array[k].id };
+                        steps.push(createSnapshot(array, `剩余 ${right[j].value} → arr[${k}]`, [k], 'merge-put', { range: [l,
+                    r] }));
+                        array[k].state = 'sorted';
+                        j++;
+                        k++;
+                    }
+                    for (let x = l; x <= r; x++) array[x].state = 'sorted';
+                    steps.push(createSnapshot(array, `区间 [${l}, ${r}] 合并完成`, [], '', { range: [l, r] }));
+                }
+                mergeSort(0, array.length - 1);
+                steps.push(createSnapshot(array, `排序完成！`));
+                return steps;
+            }
+
+            function generateHeapSteps(arr) {
+                const steps = [];
+                const array = arr.map((v, i) => ({ value: v, state: 'default', id: i }));
+                steps.push(createSnapshot(array, `初始数组: [${arr.join(', ')}]`));
+                const n = array.length;
+                if (n <= 1) {
+                    array[0].state = 'sorted';
+                    steps.push(createSnapshot(array, `排序完成！`));
+                    return steps;
+                }
+
+                function heapify(size, root) {
+                    let largest = root;
+                    const left = 2 * root + 1;
+                    const right = 2 * root + 2;
+                    steps.push(createSnapshot(array, `堆化根 arr[${root}]=${array[root].value}`, [root], 'heapify', { heapSize: size }));
+                    if (left < size) {
+                        steps.push(createSnapshot(array, `比较 arr[${largest}] 和左子 arr[${left}]`, [largest, left], 'compare', { heapSize: size }));
+                        if (array[left].value > array[largest].value) largest = left;
+                    }
+                    if (right < size) {
+                        steps.push(createSnapshot(array, `比较 arr[${largest}] 和右子 arr[${right}]`, [largest, right], 'compare', { heapSize: size }));
+                        if (array[right].value > array[largest].value) largest = right;
+                    }
+                    if (largest !== root) {
+                        steps.push(createSnapshot(array, `交换 arr[${root}] 和 arr[${largest}]`, [root, largest], 'swap', { heapSize: size }));
+                        [array[root], array[largest]] = [array[largest], array[root]];
+                        heapify(size, largest);
+                    }
+                }
+
+                for (let i = Math.floor(n / 2) - 1; i >= 0; i--) heapify(n, i);
+                steps.push(createSnapshot(array, `最大堆构建完成`, [], '', { heapSize: n }));
+                for (let i = n - 1; i > 0; i--) {
+                    steps.push(createSnapshot(array, `交换堆顶与 arr[${i}]`, [0, i], 'swap', { heapSize: i + 1 }));
+                    [array[0], array[i]] = [array[i], array[0]];
+                    array[i].state = 'sorted';
+                    steps.push(createSnapshot(array, `arr[${i}] 已排序`, [i], '', { heapSize: i }));
+                    heapify(i, 0);
+                }
+                array[0].state = 'sorted';
+                steps.push(createSnapshot(array, `排序完成！`));
+                return steps;
+            }
+
+            // ---------- 算法配置 ----------
+            const algorithms = [{
+                id: 'bubble',
+                name: '冒泡排序',
+                generator: generateBubbleSteps,
+                legend: [
+                    { color: 'var(--color-default)', text: '默认' },
+                    { color: 'var(--color-compare)', text: '比较中' },
+                    { color: 'var(--color-swap)', text: '交换' },
+                    { color: 'var(--color-sorted)', text: '已排序' }
+                ]
+            }, {
+                id: 'selection',
+                name: '选择排序',
+                generator: generateSelectionSteps,
+                legend: [
+                    { color: 'var(--color-default)', text: '默认' },
+                    { color: 'var(--color-compare)', text: '比较' },
+                    { color: 'var(--color-swap)', text: '交换' },
+                    { color: 'var(--color-gold)', text: '当前最小' }
+                ]
+            }, {
+                id: 'insertion',
+                name: '插入排序',
+                generator: generateInsertionSteps,
+                legend: [
+                    { color: 'var(--color-default)', text: '默认' },
+                    { color: 'var(--color-compare)', text: '比较' },
+                    { color: 'var(--color-insert)', text: '待插入' },
+                    { color: 'var(--color-sorted)', text: '已排序' }
+                ]
+            }, {
+                id: 'quick',
+                name: '快速排序',
+                generator: generateQuickSteps,
+                legend: [
+                    { color: 'var(--color-default)', text: '默认' },
+                    { color: 'var(--color-compare)', text: '比较' },
+                    { color: 'var(--color-swap)', text: '交换' },
+                    { color: 'var(--color-pivot)', text: '基准' },
+                    { color: 'var(--color-sorted)', text: '已排序' }
+                ]
+            }, {
+                id: 'merge',
+                name: '归并排序',
+                generator: generateMergeSteps,
+                legend: [
+                    { color: 'var(--color-default)', text: '默认' },
+                    { color: 'var(--color-compare)', text: '比较' },
+                    { color: 'var(--color-swap)', text: '放置' },
+                    { color: 'var(--color-sorted)', text: '已排序' }
+                ]
+            }, {
+                id: 'heap',
+                name: '堆排序',
+                generator: generateHeapSteps,
+                legend: [
+                    { color: 'var(--color-default)', text: '默认' },
+                    { color: 'var(--color-compare)', text: '比较' },
+                    { color: 'var(--color-swap)', text: '交换' },
+                    { color: 'var(--color-sorted)', text: '已排序' }
+                ]
+            }];
+
+            // ---------- 可视化主控 ----------
+            class SortVisualizer {
+                constructor() {
+                    this.container = document.getElementById('viz-container');
+                    this.descEl = document.getElementById('desc');
+                    this.counterEl = document.getElementById('counter');
+                    this.legendEl = document.getElementById('legend');
+                    this.inputEl = document.getElementById('array-input');
+                    this.algoSelect = document.getElementById('algo-select');
+                    this.btnGenerate = document.getElementById('btn-generate');
+                    this.btnReset = document.getElementById('btn-reset');
+                    this.btnPrev = document.getElementById('btn-prev');
+                    this.btnNext = document.getElementById('btn-next');
+                    this.btnPlay = document.getElementById('btn-play');
+
+                    this.currentAlgorithm = algorithms[0];
+                    this.steps = [];
+                    this.currentIndex = -1;
+                    this.playing = false;
+                    this.timer = null;
+                    this.baseArray = [];
+
+                    this.init();
+                }
+
+                init() {
+                    // 填充算法选择
+                    this.algoSelect.innerHTML = algorithms.map(a =>
+                        `<option value="${a.id}">${a.name}</option>`
+                    ).join('');
+                    this.algoSelect.value = algorithms[0].id;
+
+                    this.algoSelect.addEventListener('change', () => this.onAlgorithmChange());
+                    this.btnGenerate.addEventListener('click', () => this.generate());
+                    this.btnReset.addEventListener('click', () => this.reset());
+                    this.btnPrev.addEventListener('click', () => this.prev());
+                    this.btnNext.addEventListener('click', () => this.next());
+                    this.btnPlay.addEventListener('click', () => this.togglePlay());
+
+                    this.onAlgorithmChange();
+                    this.generate(); // 自动生成初始数组
+                }
+
+                onAlgorithmChange() {
+                    const id = this.algoSelect.value;
+                    const algo = algorithms.find(a => a.id === id);
+                    if (algo) {
+                        this.currentAlgorithm = algo;
+                        this.container.className = 'viz-container ' + id + '-viz';
+                        this.renderLegend();
+                        if (this.baseArray.length > 0) {
+                            this.steps = this.currentAlgorithm.generator(this.baseArray);
+                            this.currentIndex = -1;
+                            this.renderEmpty();
+                            this.updateInfo();
+                        }
+                    }
+                }
+
+                renderLegend() {
+                    const legend = this.currentAlgorithm.legend || [];
+                    this.legendEl.innerHTML = legend.map(item =>
+                        `<span class="legend-item"><span class="legend-dot" style="background:${item.color}"></span>${item.text}</span>`
+                    ).join('');
+                }
+
+                generate() {
+                    this.pause();
+                    const raw = parseInput(this.inputEl.value);
+                    if (raw.length === 0) {
+                        this.descEl.textContent = '请输入有效的非负整数数组';
+                        return;
+                    }
+                    this.baseArray = clampArray(raw, 20);
+                    this.steps = this.currentAlgorithm.generator(this.baseArray);
+                    this.currentIndex = -1;
+                    this.renderEmpty();
+                    this.updateInfo();
+                }
+
+                reset() {
+                    this.pause();
+                    if (this.baseArray.length === 0) {
+                        this.generate();
+                        return;
+                    }
+                    this.steps = this.currentAlgorithm.generator(this.baseArray);
+                    this.currentIndex = -1;
+                    this.renderEmpty();
+                    this.updateInfo();
+                }
+
+                renderEmpty() {
+                    this.container.innerHTML = '';
+                    const maxVal = Math.max(...this.baseArray, 1);
+                    const unitH = 180 / maxVal;
+                    const algoId = this.currentAlgorithm.id;
+                    this.baseArray.forEach((val, idx) => {
+                        const wrap = this.createCardWrapper(idx, val, unitH, algoId);
+                        this.container.appendChild(wrap);
+                    });
+                    this.addIndexOverlays();
+                }
+
+                createCardWrapper(id, val, unitH, algoId) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'card-wrapper';
+                    wrap.dataset.id = id;
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    const h = Math.max(28, Math.round(val * unitH));
+                    card.style.height = `${h}px`;
+
+                    if (algoId === 'selection') {
+                        const crown = document.createElement('div');
+                        crown.className = 'crown';
+                        crown.textContent = 'MIN';
+                        card.appendChild(crown);
+                    } else if (algoId === 'quick') {
+                        const badges = document.createElement('div');
+                        badges.className = 'card-badges';
+                        const bi = document.createElement('span');
+                        bi.className = 'badge-i';
+                        bi.textContent = 'i';
+                        const bj = document.createElement('span');
+                        bj.className = 'badge-j';
+                        bj.textContent = 'j';
+                        badges.appendChild(bi);
+                        badges.appendChild(bj);
+                        card.appendChild(badges);
+                    }
+
+                    const valSpan = document.createElement('span');
+                    valSpan.className = 'val';
+                    valSpan.textContent = val;
+                    card.appendChild(valSpan);
+                    wrap.appendChild(card);
+                    return wrap;
+                }
+
+                addIndexOverlays() {
+                    const wrappers = Array.from(this.container.querySelectorAll('.card-wrapper'));
+                    if (wrappers.length === 0) return;
+                    const baseOffset = wrappers[0].offsetLeft;
+                    const cardWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(
+                        '--card-width')) || 44;
+                    const cardGap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-gap')) || 8;
+                    const stepSize = cardWidth + cardGap;
+                    this.baseArray.forEach((_, idx) => {
+                        const div = document.createElement('div');
+                        div.className = 'card-index-overlay';
+                        div.textContent = idx;
+                        div.style.left = `${baseOffset + idx * stepSize}px`;
+                        this.container.appendChild(div);
+                    });
+                }
+
+                renderStep(index) {
+                    if (!this.steps.length || index < 0 || index >= this.steps.length) return;
+                    const step = this.steps[index];
+                    const maxVal = Math.max(...this.baseArray, 1);
+                    const unitH = 180 / maxVal;
+                    const cardWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(
+                    '--card-width')) || 44;
+                    const cardGap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-gap')) || 8;
+                    const stepSize = cardWidth + cardGap;
+                    const algoId = this.currentAlgorithm.id;
+
+                    let wrappers = Array.from(this.container.querySelectorAll('.card-wrapper'));
+                    const wrapperById = new Map();
+                    wrappers.forEach(w => wrapperById.set(Number(w.dataset.id), w));
+
+                    step.array.forEach(item => {
+                        if (!wrapperById.has(item.id)) {
+                            const wrap = this.createCardWrapper(item.id, item.value, unitH, algoId);
+                            wrapperById.set(item.id, wrap);
+                            this.container.appendChild(wrap);
+                        }
+                    });
+
+                    wrapperById.forEach(w => {
+                        w.className = 'card-wrapper';
+                        w.style.transform = '';
+                        w.style.zIndex = '';
+                        const card = w.querySelector('.card');
+                        if (card) card.style.removeProperty('--swap-dir');
+                    });
+
+                    this.container.querySelectorAll(
+                        '.range-box, .vs-badge-overlay, .slot-placeholder-overlay, .card-index-overlay'
+                    ).forEach(el => el.remove());
+
+                    const baseOffset = this.container.querySelector('.card-wrapper')?.offsetLeft || 0;
+
+                    step.array.forEach((item, posIndex) => {
+                        const w = wrapperById.get(item.id);
+                        if (!w) return;
+                        const dx = (posIndex - item.id) * stepSize;
+                        w.style.transform = `translateX(${dx}px)`;
+                        if (item.state && item.state !== 'default') {
+                            w.classList.add(item.state);
+                        }
+                        const card = w.querySelector('.card');
+                        const h = Math.max(28, Math.round(item.value * unitH));
+                        card.style.height = `${h}px`;
+                        card.querySelector('.val').textContent = item.value;
+                        if (step.focus && step.focus.includes(posIndex)) {
+                            w.classList.add('focused');
+                            w.style.zIndex = '120';
+                        }
+                    });
+
+                    this.applyAnimation(step, wrapperById, baseOffset, stepSize);
+                    this.decorate(step, wrapperById, baseOffset, stepSize);
+
+                    step.array.forEach((_, posIndex) => {
+                        const div = document.createElement('div');
+                        div.className = 'card-index-overlay';
+                        div.textContent = posIndex;
+                        div.style.left = `${baseOffset + posIndex * stepSize}px`;
+                        this.container.appendChild(div);
+                    });
+
+                    this.descEl.textContent = step.desc;
+                    this.counterEl.textContent = `步骤 ${index + 1} / ${this.steps.length}`;
+                }
+
+                applyAnimation(step, wrapperById, baseOffset, stepSize) {
+                    const anim = step.animation;
+                    if (!anim || !step.focus) return;
+                    const algoId = this.currentAlgorithm.id;
+                    const apply = (posIdx, className) => {
+                        const item = step.array[posIdx];
+                        if (!item) return;
+                        const w = wrapperById.get(item.id);
+                        if (w) w.classList.add(className);
+                    };
+
+                    switch (anim) {
+                        case 'compare':
+                            step.focus.forEach(idx => apply(idx, 'comparing'));
+                            if (algoId === 'bubble' && step.focus.length === 2) {
+                                const leftPos = Math.min(step.focus[0], step.focus[1]);
+                                const vs = document.createElement('div');
+                                vs.className = 'vs-badge-overlay';
+                                vs.textContent = 'VS';
+                                vs.style.left = `${baseOffset + leftPos * stepSize + stepSize/2}px`;
+                                this.container.appendChild(vs);
+                            }
+                            break;
+                        case 'swap':
+                            if (algoId === 'bubble') {
+                                step.focus.forEach((idx, i) => {
+                                    const item = step.array[idx];
+                                    if (!item) return;
+                                    const w = wrapperById.get(item.id);
+                                    if (w) {
+                                        w.classList.add('swapping', 'anim-swap-cross');
+                                        const card = w.querySelector('.card');
+                                        if (card) card.style.setProperty('--swap-dir', i === 0 ? '18px' :
+                                            '-18px');
+                                    }
+                                });
+                            } else {
+                                step.focus.forEach(idx => apply(idx, 'swapping'));
+                            }
+                            break;
+                        case 'shift':
+                            if (algoId === 'insertion' && step.focus.length >= 2) apply(step.focus[1], 'shift-right');
+                            if (step.extras?.slotIndex !== undefined) {
+                                const slot = document.createElement('div');
+                                slot.className = 'slot-placeholder-overlay';
+                                slot.style.left = `${baseOffset + step.extras.slotIndex * stepSize}px`;
+                                this.container.appendChild(slot);
+                            }
+                            break;
+                        case 'drop':
+                            step.focus.forEach(idx => apply(idx, 'anim-drop'));
+                            break;
+                        case 'pivot-place':
+                            step.focus.forEach(idx => apply(idx, 'anim-pivot-place'));
+                            break;
+                        case 'crown-transfer':
+                            if (step.extras?.oldMinIdx !== undefined) apply(step.extras.oldMinIdx,
+                                'anim-crown-transfer');
+                            if (step.extras?.newMinIdx !== undefined) apply(step.extras.newMinIdx, 'crown-pop');
+                            break;
+                        case 'arc-fly':
+                            step.focus.forEach(idx => apply(idx, 'anim-arc-fly'));
+                            break;
+                        case 'merge-put':
+                            step.focus.forEach(idx => apply(idx, 'merge-put'));
+                            break;
+                        case 'heapify':
+                            step.focus.forEach(idx => apply(idx, 'heapify'));
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                decorate(step, wrapperById, baseOffset, stepSize) {
+                    const algoId = this.currentAlgorithm.id;
+                    if (algoId === 'selection') {
+                        let minIdx = step.extras?.minIdx;
+                        if (step.animation === 'crown-transfer' && step.extras?.newMinIdx !== undefined) {
+                            minIdx = step.extras.newMinIdx;
+                        }
+                        if (minIdx !== undefined) {
+                            const item = step.array[minIdx];
+                            if (item) {
+                                const w = wrapperById.get(item.id);
+                                if (w) w.classList.add('has-crown', 'min-current');
+                            }
+                        }
+                    }
+                    if (algoId === 'insertion' && step.extras?.slotIndex !== undefined && step.animation !== 'shift') {
+                        const slot = document.createElement('div');
+                        slot.className = 'slot-placeholder-overlay';
+                        slot.style.left = `${baseOffset + step.extras.slotIndex * stepSize}px`;
+                        this.container.appendChild(slot);
+                    }
+                    if (algoId === 'quick') {
+                        if (step.extras?.i !== undefined) {
+                            const item = step.array[step.extras.i];
+                            if (item) wrapperById.get(item.id)?.classList.add('show-badge-i');
+                        }
+                        if (step.extras?.j !== undefined) {
+                            const item = step.array[step.extras.j];
+                            if (item) wrapperById.get(item.id)?.classList.add('show-badge-j');
+                        }
+                    }
+                    if ((algoId === 'quick' || algoId === 'merge') && step.extras?.range) {
+                        const [low, high] = step.extras.range;
+                        const box = document.createElement('div');
+                        box.className = 'range-box';
+                        box.style.left = `${baseOffset + low * stepSize - 4}px`;
+                        box.style.width = `${(high - low + 1) * stepSize + 4}px`;
+                        this.container.appendChild(box);
+                    }
+                    if (algoId === 'heap' && step.extras?.heapSize) {
+                        const size = step.extras.heapSize;
+                        const box = document.createElement('div');
+                        box.className = 'range-box';
+                        box.style.left = `${baseOffset - 4}px`;
+                        box.style.width = `${size * stepSize + 4}px`;
+                        this.container.appendChild(box);
+                    }
+                }
+
+                updateInfo() {
+                    if (this.currentIndex === -1) {
+                        this.descEl.textContent = '请点击“下一步”开始演示';
+                        this.counterEl.textContent = `- / ${this.steps.length}`;
+                    } else {
+                        this.renderStep(this.currentIndex);
+                    }
+                }
+
+                next() {
+                    if (this.steps.length === 0) { this.generate(); return; }
+                    if (this.currentIndex < this.steps.length - 1) {
+                        this.currentIndex++;
+                        this.renderStep(this.currentIndex);
+                    } else { this.pause(); }
+                }
+
+                prev() {
+                    if (!this.steps.length) return;
+                    if (this.currentIndex >= 0) {
+                        this.currentIndex--;
+                        if (this.currentIndex === -1) {
+                            this.renderEmpty();
+                            this.updateInfo();
+                        } else {
+                            this.renderStep(this.currentIndex);
+                        }
+                    }
+                }
+
+                togglePlay() {
+                    this.playing ? this.pause() : this.play();
+                }
+
+                play() {
+                    if (!this.steps.length) { this.generate(); return; }
+                    this.playing = true;
+                    this.btnPlay.textContent = '⏸ 暂停';
+                    if (this.currentIndex >= this.steps.length - 1) this.currentIndex = -1;
+                    this.timer = setInterval(() => {
+                        if (this.currentIndex < this.steps.length - 1) {
+                            this.currentIndex++;
+                            this.renderStep(this.currentIndex);
+                        } else { this.pause(); }
+                    }, 1000);
+                }
+
+                pause() {
+                    this.playing = false;
+                    this.btnPlay.textContent = '▶ 自动播放';
+                    if (this.timer) { clearInterval(this.timer);
+                        this.timer = null; }
+                }
+            }
+
+            // 启动应用
+            document.addEventListener('DOMContentLoaded', () => {
+                new SortVisualizer();
+            });
+        })();
+    </script>
+</body>
+</html>
