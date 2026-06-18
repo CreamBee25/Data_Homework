@@ -1,0 +1,30 @@
+3阶 B-Tree 最终结构
+键值序列: [10, 20, 5, 6, 12, 30, 25]
+m = 3 (max 2 keys, max 3 children per node)
+
+
+              ┌──────────────┐
+              │   10 , 20    │  ← 根结点 (内部)
+              │  keys=2      │
+              │  children=3  │
+              └──────────────┘
+               /      |      \
+              /       |       \
+    ┌─────────┐  ┌────────┐  ┌──────────┐
+    │  5, 6   │  │   12   │  │  25, 30  │  ← 叶结点层
+    │ keys=2  │  │ keys=1 │  │  keys=2  │     (全部同一深度)
+    │ child=0 │  │ child=0│  │  child=0 │
+    └─────────┘  └────────┘  └──────────┘
+
+
+程序生成结构:
+
+└── [10, 20]  [keys=2, children=3] INTERNAL
+    ├── [5, 6]  [keys=2, children=0] LEAF
+    ├── [12]  [keys=1, children=0] LEAF
+    └── [25, 30]  [keys=2, children=0] LEAF
+
+标注说明:
+  [keys=N, children=M]  该结点有 N 个键值, M 个子结点
+  LEAF     = 叶结点
+  INTERNAL = 内部结点
